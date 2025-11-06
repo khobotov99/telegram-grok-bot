@@ -1,11 +1,11 @@
 import logging
+import os
+import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-import requests
-import os
-import asyncio
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 GROK_API_KEY = os.getenv('GROK_API_KEY')
@@ -24,7 +24,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     user_message = update.message.text
-    user_name = update.effective_user.first_name or "Друг"
+    user_name = update.effective_user.first_name or "Солнышко"
 
     headers = {
         'Authorization': f'Bearer {GROK_API_KEY}',
@@ -45,25 +45,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code == 200:
             reply = response.json()['choices'][0]['message']['content']
         else:
-            reply = "Звёзды немного тормозят 🌟 Напиши через минуту!"
-            logging.error(f"Grok error: {response.text}")
+            reply = "Звёзды чуть тормозят 🌟 Напиши через минутку!"
     except Exception as e:
-        reply = "Связь с космосом пропала... Попробуй позже!"
-        logging.error(f"Exception: {e}")
+        logger.error(f"Error: {e}")
+        reply = "Ой, связь с космосом пропала... Попробуй позже!"
 
     await update.message.reply_text(reply)
 
-async def main():
+def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    
-    # Сброс старых подключений
-    await app.initialize()
-    await app.updater.start_polling(drop_pending_updates=True)
     
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    logging.info("Бот Алиса запущен и готов продавать натальные карты!")
-    await app.run_polling()
+    logger.info("Бот Алиса запущен и продаёт натальные карты 24/7!")
+    
+    # ЭТО ГЛАВНОЕ — ДЛЯ RENDER!
+    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
