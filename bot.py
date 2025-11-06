@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import requests
 import os
+import asyncio
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -23,7 +24,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     user_message = update.message.text
-    user_name = update.effective_user.first_name
+    user_name = update.effective_user.first_name or "Друг"
 
     headers = {
         'Authorization': f'Bearer {GROK_API_KEY}',
@@ -45,15 +46,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply = response.json()['choices'][0]['message']['content']
         else:
             reply = "Звёзды немного тормозят 🌟 Напиши через минуту!"
+            logging.error(f"Grok error: {response.text}")
     except Exception as e:
         reply = "Связь с космосом пропала... Попробуй позже!"
+        logging.error(f"Exception: {e}")
 
     await update.message.reply_text(reply)
 
-def main():
+async def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    
+    # Сброс старых подключений
+    await app.initialize()
+    await app.updater.start_polling(drop_pending_updates=True)
+    
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling()
+    
+    logging.info("Бот Алиса запущен и готов продавать натальные карты!")
+    await app.run_polling()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
